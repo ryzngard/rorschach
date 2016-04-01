@@ -8,6 +8,9 @@ using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
 using Microsoft.Bot.Connector.Utilities;
 using Newtonsoft.Json;
+using System.Collections.Generic;
+using rorschach.Actions;
+using System.Reflection;
 
 namespace rorschach
 {
@@ -18,28 +21,81 @@ namespace rorschach
             Environment.NewLine,
             "roll - Rolls a d20");
 
+        static List<IBotAction> StaticActions;
+
+        static void CreateActions()
+        {
+            StaticActions = new List<IBotAction>();
+            var instances = from t in Assembly.GetExecutingAssembly().GetTypes()
+                where t.GetInterfaces().Contains(typeof(IBotAction))
+                    && t.GetConstructor(Type.EmptyTypes) != null
+                select Activator.CreateInstance(t) as IBotAction;
+
+            StaticActions.AddRange(instances);
+        }
+
         /// <summary>
         /// POST: api/Messages
         /// Receive a message from a user and reply to it
         /// </summary>
         public async Task<Message> Post([FromBody]Message message)
         {
-            if (message.Type == "Message" && message.To.IsBot.Value && message.To.Name.ToLower().Equals("rorschach"))
+            if (message.Type == "Message")
             {
-                var returnMessage = PerformSlashCommand(message);
-                if (returnMessage != null)
+                bool containsMention = message.
+                    Mentions.
+                    Where(m => m.Mentioned.IsBot.Value && m.Mentioned.Name.ToLower().Equals("rorschach2")).Count() > 0;
+
+                bool privateChat = message.TotalParticipants == 2 && message.Participants.FirstOrDefault(p => p.Name.ToLower().Contains("rorschach")) != null;
+
+                if (containsMention || privateChat)
                 {
-                    return returnMessage;
+                    Message returnMessage;
+                    MessageWrapper wrapper = new MessageWrapper(message);
+
+                    if (StaticActions == null)
+                    {
+                        CreateActions();
+                    }
+
+                    foreach (var botAction in StaticActions)
+                    {
+                        returnMessage = botAction.ParseMessage(wrapper);
+                        if (returnMessage != null)
+                        {
+                            return returnMessage;
+                        }
+                    }
+                    
+                    return message.CreateReplyMessage($"I could not parse '{message.Text}', try one of the following instead: \n\n" + HelpMessage);
                 }
                 else
                 {
-                    return message.CreateReplyMessage($"I could not parse '{message.Text}', try one of the following instead: \n\n" + HelpMessage);
+                    // If the chat is 
                 }
+                //else
+                //{
+                //    string mentionsText = "";
+                //    foreach (var mention in message.Mentions)
+                //    {
+                //        mentionsText += mention.Text + ":" + mention.Mentioned.Address + ":" + mention.Mentioned.Name + ":" + mention.Mentioned.Id + "\n";
+                //    }
+
+                //    string participantsText = "";
+                //    foreach (var participant in message.Participants)
+                //    {
+                //        participantsText += participant.Name + ":" + participant.Address + ":" + participant.Id + ",,,";
+                //    }
+
+                //    return message.CreateReplyMessage($"DEBUG:{message.ConversationId}::{message.BotUserData}\n\n{mentionsText}");
+                //}
             }
             else
             {
                 return HandleSystemMessage(message);
             }
+
+            return null;
         }
 
         private Message PerformSlashCommand(Message message)
@@ -52,12 +108,7 @@ namespace rorschach
 
             var text = message.Text.ToLower().Trim();
 
-            // For now, just do if statements. Maybe find a more elegant way to do this later
-            if (text.Equals("roll"))
-            {
-                int diceResult = (new Random()).Next(20);
-                return message.CreateReplyMessage($"Rolling d20... result is: {diceResult}");
-            }
+            
             return null;
         }
 
