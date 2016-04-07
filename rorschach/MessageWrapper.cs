@@ -22,5 +22,15 @@ namespace rorschach
             // Remove the first @name 
             return text.Replace("@rorschach2:", "").Trim();
         }
+
+        /// <summary>
+        /// Easy access to creating a reply to the original message.
+        /// </summary>
+        /// <param name="v">Reply string</param>
+        /// <returns></returns>
+        internal Message CreateReply(string v)
+        {
+            return this.OriginalMessage.CreateReplyMessage(v);
+        }
     }
 }
