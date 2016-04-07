@@ -9,6 +9,11 @@ namespace rorschach.Actions
 {
     public class Score : IBotAction
     {
+        public string HelpMessage()
+        {
+            return "scoreboard, to get the current kudos scoreboard";
+        }
+
         public Message ParseMessage(MessageWrapper m)
         {
             if (m.StrippedText.Trim().ToLower().Equals("scoreboard"))

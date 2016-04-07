@@ -16,6 +16,11 @@ namespace rorschach.Actions
     /// </summary>
     public class Kudos : IBotAction
     {
+        public string HelpMessage()
+        {
+            return "# @name <reason>, to give someone kudos! Example: 20 @rorschach being the best damn bot there ever was";
+        }
+
         public Message ParseMessage(MessageWrapper m)
         {
             // Check the text for the correct pattern

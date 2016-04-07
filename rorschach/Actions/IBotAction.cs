@@ -10,5 +10,6 @@ namespace rorschach.Actions
     interface IBotAction
     {
         Message ParseMessage(MessageWrapper m);
+        String HelpMessage();
     }
 }

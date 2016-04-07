@@ -58,6 +58,8 @@ namespace rorschach
                         CreateActions();
                     }
 
+                    string helpMessage = $"I could not parse '{message.Text}', try one of the following instead: \n\n";
+
                     foreach (var botAction in StaticActions)
                     {
                         returnMessage = botAction.ParseMessage(wrapper);
@@ -65,30 +67,12 @@ namespace rorschach
                         {
                             return returnMessage;
                         }
+
+                        helpMessage += botAction.HelpMessage() + "\n";
                     }
                     
-                    return message.CreateReplyMessage($"I could not parse '{message.Text}', try one of the following instead: \n\n" + HelpMessage);
+                    return message.CreateReplyMessage(helpMessage);
                 }
-                else
-                {
-                    // If the chat is 
-                }
-                //else
-                //{
-                //    string mentionsText = "";
-                //    foreach (var mention in message.Mentions)
-                //    {
-                //        mentionsText += mention.Text + ":" + mention.Mentioned.Address + ":" + mention.Mentioned.Name + ":" + mention.Mentioned.Id + "\n";
-                //    }
-
-                //    string participantsText = "";
-                //    foreach (var participant in message.Participants)
-                //    {
-                //        participantsText += participant.Name + ":" + participant.Address + ":" + participant.Id + ",,,";
-                //    }
-
-                //    return message.CreateReplyMessage($"DEBUG:{message.ConversationId}::{message.BotUserData}\n\n{mentionsText}");
-                //}
             }
             else
             {
