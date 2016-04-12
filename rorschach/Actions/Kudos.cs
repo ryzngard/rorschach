@@ -69,10 +69,13 @@ namespace rorschach.Actions
                     return m.CreateReply($"-10 points to {person} for trying to give themself kudos.");
                 }
 
-                if (m.OriginalMessage.Participants.FirstOrDefault(p => p.Name.Equals(person)) == null)
-                {
-                    return m.CreateReply($"Can't give points to {person}, they aren't in this channel!");
-                }
+                // Something wonky is happening here with this always returning 0.
+                // Possible mismach between @name and name.
+                // TODO: Re-Enable this.
+                //if (m.OriginalMessage.Participants.Where(p => p.Name.Equals(person)).Count() == 0)
+                //{
+                //    return m.CreateReply($"Can't give points to {person}, they aren't in this channel!");
+                //}
 
                 KudosData.StoreKudos(number, person);
 
