@@ -21,6 +21,11 @@ namespace rorschach.Actions
             return (rand % size) + 1;
         }
 
+        public string GetCommandString()
+        {
+            return "Dice";
+        }
+
         public string HelpMessage()
         {
             return "roll (#d#), defaults to 1d20.";

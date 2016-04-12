@@ -16,19 +16,32 @@ namespace rorschach.Actions
     /// </summary>
     public class Kudos : IBotAction
     {
+        public string GetCommandString()
+        {
+            return "Kudos";
+        }
+
         public string HelpMessage()
         {
-            return "# @name <reason>, to give someone kudos! Example: 20 @rorschach being the best damn bot there ever was";
+            return "<number> @name <reason>, to give someone kudos! Example: 20 @rorschach being the best damn bot there ever was";
         }
 
         public Message ParseMessage(MessageWrapper m)
         {
             // Check the text for the correct pattern
-            //const String pat = "^(?<negative>-{0,1})(?<points>[0-9]+)\\s@(?<name>\\w)\\s\"(?<reason>[\\w])\"$";
             const String pat = "^(?<negative>-{0,1})(?<points>[0-9]+)\\s@{0,1}(?<name>[\\w]+)\\s(?<reason>.+)";
+            const String pat2 = "^@{0,1}(?<name>[\\w]+)\\s(?<negative>-{0,1})(?<points>[0-9]+)\\s(?<reason>.+)";
             Regex r = new Regex(pat, RegexOptions.IgnoreCase);
+            Regex r2 = new Regex(pat2, RegexOptions.IgnoreCase);
 
             Match match = r.Match(m.StrippedText);
+
+            // Attempt to match with the alternative pattern
+            if (!match.Success)
+            {
+                match = r2.Match(m.StrippedText);
+            }
+
             if (match.Success)
             {
                 // See if number is negative
@@ -48,8 +61,27 @@ namespace rorschach.Actions
 
                 string reason = match.Groups["reason"].Value;
                 string person = match.Groups["name"].Value;
+                
+                if (person.Equals(m.OriginalMessage.From.Name))
+                {
+                    // Give person -10 points
+                    KudosData.StoreKudos(-10, person);
+                    return m.CreateReply($"-10 points to {person} for trying to give themself kudos.");
+                }
+
+                if (m.OriginalMessage.Participants.FirstOrDefault(p => p.Name.Equals(person)) == null)
+                {
+                    return m.CreateReply($"Can't give points to {person}, they aren't in this channel!");
+                }
 
                 KudosData.StoreKudos(number, person);
+
+                // Remove quotes from reason if it starts and ends with quotes
+                reason = reason.Trim();
+                if (reason.StartsWith("\"") && reason.EndsWith("\""))
+                {
+                    reason = reason.Substring(1, reason.Length - 2);
+                }
 
                 return m.CreateReply($"Giving @{person} {number} points for \"{reason}\"");
             }

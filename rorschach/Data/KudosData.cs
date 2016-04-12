@@ -26,7 +26,7 @@ namespace rorschach.Data
         {
             if (other.Points != this.Points)
             {
-                return this.Points.CompareTo(other.Points);
+                return this.Points.CompareTo(other.Points) * -1;
             }
             else
             {
@@ -48,6 +48,7 @@ namespace rorschach.Data
                 this.Account = CloudStorageAccount.Parse(rorschach.Properties.Settings.Default.StorageConnectionString);
                 this.TableClient = this.Account.CreateCloudTableClient();
                 this.Table = this.TableClient.GetTableReference("kudos");
+                this.Table.CreateIfNotExists();
             }
         }
 
@@ -59,7 +60,7 @@ namespace rorschach.Data
             // Parse the connection string and return a reference to the storage account.
             ConnectionData connectionData = new ConnectionData();
 
-            connectionData.Table.CreateIfNotExists();
+            
 
             TableOperation retrieveOperation = TableOperation.Retrieve<Kudo>("scores", person);
             TableResult result = connectionData.Table.Execute(retrieveOperation);

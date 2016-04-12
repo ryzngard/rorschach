@@ -9,6 +9,11 @@ namespace rorschach.Actions
 {
     public class Score : IBotAction
     {
+        public string GetCommandString()
+        {
+            return "ScoreBoard";
+        }
+
         public string HelpMessage()
         {
             return "scoreboard, to get the current kudos scoreboard";
@@ -18,8 +23,8 @@ namespace rorschach.Actions
         {
             if (m.StrippedText.Trim().ToLower().Equals("scoreboard"))
             {
-                string output = "Name\t\tPoints\r";
-                output += "====================\r";
+                string output = "```";
+                output += String.Format("{0, -20} {1}\n\n","Name", "Points");
 
                 Kudo[] kudos = KudosData.GetAllKudos();
 
@@ -33,9 +38,10 @@ namespace rorschach.Actions
 
                 foreach (Kudo kudo in kudos)
                 {
-                    output += String.Format($"{kudo.Name}\t\t{kudo.Points}\n", kudo.Name, kudo.Points);
+                    output += String.Format("{0, -20} {1}\n\n", kudo.Name, kudo.Points);
                 }
 
+                output += "```";
                 return m.CreateReply(output);
             }
 

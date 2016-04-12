@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using rorschach.Actions;
 using System.Reflection;
+using Microsoft.ApplicationInsights;
 
 namespace rorschach
 {
@@ -34,12 +35,44 @@ namespace rorschach
             StaticActions.AddRange(instances);
         }
 
+        private static string GetMentions(Message message)
+        {
+            List<string> mentions = new List<string>();
+            foreach (Mention m in message.Mentions)
+            {
+                mentions.Add(m.Mentioned.Name);
+            }
+
+            return String.Join(",", mentions);
+        }
+
+        private void LogEvent(String name, Dictionary<string, string> properties)
+        {
+            if (rorschach.Properties.Settings.Default.TelemetryEnabled)
+            {
+                var tc = new TelemetryClient();
+                tc.TrackEvent(name, properties);
+            }
+        }
+
         /// <summary>
         /// POST: api/Messages
         /// Receive a message from a user and reply to it
         /// </summary>
         public async Task<Message> Post([FromBody]Message message)
         {
+
+
+            // Log the message that comes in
+            { 
+                var properties = new Dictionary<string, string>();
+                properties.Add("From", message.From.Name);
+                properties.Add("Channel", message.ChannelMessageId);
+                properties.Add("Mentions", GetMentions(message));
+
+                this.LogEvent("MessageReceived", properties);
+            }
+
             if (message.Type == "Message")
             {
                 bool containsMention = message.
@@ -57,18 +90,37 @@ namespace rorschach
                     {
                         CreateActions();
                     }
+                    string helpMessage;
+                    bool isHelp = false;
 
-                    string helpMessage = $"I could not parse '{message.Text}', try one of the following instead: \n\n";
+                    if (message.Text.Trim().ToLower().Equals("help"))
+                    {
+                        helpMessage = "Try one of the following commands \n\n";
+                        isHelp = true;
+                    }
+                    else
+                    {
+                        helpMessage = $"I could not parse '{message.Text}', try one of the following instead: \n\n";
+                    }
+                    
 
                     foreach (var botAction in StaticActions)
                     {
-                        returnMessage = botAction.ParseMessage(wrapper);
-                        if (returnMessage != null)
+                        if (!isHelp)
                         {
-                            return returnMessage;
+                            returnMessage = botAction.ParseMessage(wrapper);
+                            if (returnMessage != null)
+                            {
+                                var properties = new Dictionary<string, string>();
+                                properties.Add("From", message.From.Name);
+                                properties.Add("Channel", message.ChannelMessageId);
+                                properties.Add("Command", botAction.GetCommandString());
+                                this.LogEvent("CommandExecuted", properties);
+                                return returnMessage;
+                            }
                         }
 
-                        helpMessage += botAction.HelpMessage() + "\n";
+                        helpMessage += botAction.HelpMessage() + "\n\n";
                     }
                     
                     return message.CreateReplyMessage(helpMessage);
