@@ -162,10 +162,12 @@
     <Compile Include="Actions\DiceRoller.cs" />
     <Compile Include="Actions\IBotAction.cs" />
     <Compile Include="Actions\Kudos.cs" />
+    <Compile Include="Actions\Polling.cs" />
     <Compile Include="Actions\Score.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="Data\KudosData.cs" />
+    <Compile Include="Data\PollData.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

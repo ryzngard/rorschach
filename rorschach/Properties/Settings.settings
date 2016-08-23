@@ -1,0 +1,12 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="rorschach.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="StorageConnectionString" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">DefaultEndpointsProtocol=https;AccountName=rorschach;AccountKey=gzoI9kXtRC60JLso2LSPkdx1HajR1ip6Ntu2oPXleGacIyzCrV0piIQFZB1ZiM8OljwwM/Wa2D3uxHfsqrtoag==</Value>
+    </Setting>
+    <Setting Name="TelemetryEnabled" Type="System.Boolean" Scope="Application">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

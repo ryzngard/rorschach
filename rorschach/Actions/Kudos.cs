@@ -29,7 +29,7 @@ namespace rorschach.Actions
         public Message ParseMessage(MessageWrapper m)
         {
             // Check the text for the correct pattern
-            const String pat = "^(?<negative>-{0,1})(?<points>[0-9]+)\\s@{0,1}(?<name>[\\w]+)\\s(?<reason>.+)";
+            const String pat = "^(?<negative>-{0,1})(\\+{0,1})(?<points>[0-9]+)\\s@{0,1}(?<name>[\\w]+)\\s(?<reason>.+)";
             const String pat2 = "^@{0,1}(?<name>[\\w]+)\\s(?<negative>-{0,1})(?<points>[0-9]+)\\s(?<reason>.+)";
             Regex r = new Regex(pat, RegexOptions.IgnoreCase);
             Regex r2 = new Regex(pat2, RegexOptions.IgnoreCase);
