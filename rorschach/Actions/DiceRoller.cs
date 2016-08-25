@@ -31,9 +31,9 @@ namespace rorschach.Actions
             return "roll (#d#), defaults to 1d20.";
         }
 
-        public Message ParseMessage(MessageWrapper m)
+        public bool ParseMessage(ActivityWrapper wrapper)
         {
-            if (m.StrippedText.ToLower().StartsWith("roll"))
+            if (wrapper.StrippedText.ToLower().StartsWith("roll"))
             {
                 int count = 1;
                 int sides = 20;
@@ -41,7 +41,7 @@ namespace rorschach.Actions
                 const String pat = @"roll (?<dice_count>[0-9]*)d(?<dice_size>[0-9]+)";
                 Regex r = new Regex(pat, RegexOptions.IgnoreCase);
 
-                Match match = r.Match(m.StrippedText);
+                Match match = r.Match(wrapper.StrippedText);
                 if (match.Success)
                 {
                     
@@ -51,7 +51,8 @@ namespace rorschach.Actions
                     {
                         if (!int.TryParse(match.Groups["dice_count"].Value, out count))
                         {
-                            return m.OriginalMessage.CreateReplyMessage($"Invalid dice count '{match.Groups["dice_count"]}' in text '{m.StrippedText}'");
+                            wrapper.SendReply($"Invalid dice count '{match.Groups["dice_count"]}' in text '{wrapper.StrippedText}'");
+                            return true;
                         }
                     }
 
@@ -59,20 +60,23 @@ namespace rorschach.Actions
                     {
                         if (!int.TryParse(match.Groups["dice_size"].Value, out sides))
                         {
-                            return m.OriginalMessage.CreateReplyMessage($"Invalid dice size '{match.Groups["dice_size"]}' in '{m.StrippedText}");
+                            wrapper.SendReply($"Invalid dice size '{match.Groups["dice_size"]}' in '{wrapper.StrippedText}");
+                            return true;
                         }
                     }
                 }
 
                 if (count > 20)
                 {
-                    return m.OriginalMessage.CreateReplyMessage($"Go roll your own damn dice {m.OriginalMessage.From.Address}, I don't have time to roll {count} die for you!");
+                    wrapper.SendReply($"Go roll your own damn dice {wrapper.OriginalActivity.From.Id}, I don't have time to roll {count} die for you!");
+                    return true;
                 }
 
                 if (count == 1 && sides > 0)
                 {
                     // Special case the text for 1 result 
-                    return m.OriginalMessage.CreateReplyMessage($"Result from rolling {sides} sided dice: {GetRandomRoll(sides)}");
+                    wrapper.SendReply($"Result from rolling {sides} sided dice: {GetRandomRoll(sides)}");
+                    return true;
                 }
                 else if (count > 0 && sides > 0)
                 {
@@ -88,22 +92,25 @@ namespace rorschach.Actions
 
                     message += $"={total}";
 
-                    return m.OriginalMessage.CreateReplyMessage(message);
+                    wrapper.SendReply(message);
+                    return true;
                 }
                 else
                 {
                     if (count <= 0)
                     {
-                        return m.OriginalMessage.CreateReplyMessage("Cannot roll 0 dice, silly!");
+                        wrapper.SendReply("Cannot roll 0 dice, silly!");
+                        return true;
                     }
                     else
                     {
-                        return m.OriginalMessage.CreateReplyMessage("You get 0. You'll always get 0. You're worth nothing and your mother smells of elderberries");
+                        wrapper.SendReply("You get 0. You'll always get 0. You're worth nothing and your mother smells of elderberries");
+                        return true;
                     }
                 }
             }
 
-            return null;
+            return false;
         }
     }
 }

@@ -1,36 +1,66 @@
 ﻿using Microsoft.Bot.Connector;
+using rorschach.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace rorschach
 {
-    public class MessageWrapper
+    public class ActivityWrapper : IDisposable
     {
-        public Message OriginalMessage { get; private set; }
+        public Activity OriginalActivity { get; private set; }
         public String StrippedText { get; private set; }
 
-        public MessageWrapper(Message m)
+        private ConnectorClient connector;
+
+        public ActivityWrapper(Activity m)
         {
-            this.OriginalMessage = m;
+            this.OriginalActivity = m;
             this.StrippedText = StripText(m.Text);
+            this.connector = new ConnectorClient(new Uri(m.ServiceUrl));
         }
 
         private String StripText(String text)
         {
-            // Remove the first @name 
-            return text.Replace("@rorschach2:", "").Trim();
+            string part = text.ReplaceFirst("@rorschach2", "");
+            
+            if (part.StartsWith(":"))
+            {
+                return part.Substring(1).Trim();
+            }
+
+            return part.Trim();
         }
+
+        
 
         /// <summary>
         /// Easy access to creating a reply to the original message.
         /// </summary>
-        /// <param name="v">Reply string</param>
+        /// <param name="reply">Reply string</param>
         /// <returns></returns>
-        internal Message CreateReply(string v)
+        internal void SendReply(string reply)
         {
-            return this.OriginalMessage.CreateReplyMessage(v);
+            var replyObject = this.OriginalActivity.CreateReply(reply);
+            this.connector.Conversations.ReplyToActivity(replyObject);
+        }
+
+        internal async Task SendReplyAsync(string reply)
+        {
+            var replyObject = this.OriginalActivity.CreateReply(reply);
+            await this.connector.Conversations.ReplyToActivityAsync(replyObject);
+        }
+
+        public void Dispose()
+        {
+            this.connector.Dispose();
+        }
+
+        internal bool IsHelp()
+        {
+            return this.StrippedText.ToLower().Equals("help");
         }
     }
 }

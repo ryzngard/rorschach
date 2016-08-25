@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
-using Microsoft.Bot.Connector.Utilities;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using rorschach.Actions;
 using System.Reflection;
 using Microsoft.ApplicationInsights;
+using System.Net.Http;
+using System.Net;
 
 namespace rorschach
 {
@@ -35,10 +32,10 @@ namespace rorschach
             StaticActions.AddRange(instances);
         }
 
-        private static string GetMentions(Message message)
+        private static string GetMentions(Activity activity)
         {
             List<string> mentions = new List<string>();
-            foreach (Mention m in message.Mentions)
+            foreach (Mention m in activity.GetMentions())
             {
                 mentions.Add(m.Mentioned.Name);
             }
@@ -59,128 +56,117 @@ namespace rorschach
         /// POST: api/Messages
         /// Receive a message from a user and reply to it
         /// </summary>
-        public async Task<Message> Post([FromBody]Message message)
+        public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
-
-
-            // Log the message that comes in
-            { 
-                var properties = new Dictionary<string, string>();
-                properties.Add("From", message.From.Name);
-                properties.Add("Channel", message.ChannelMessageId);
-                properties.Add("Mentions", GetMentions(message));
-
-                this.LogEvent("MessageReceived", properties);
-            }
-
-            if (message.Type == "Message")
+            if (activity == null)
             {
-                bool containsMention = message.
-                    Mentions.
-                    Where(m => m.Mentioned.IsBot.Value && m.Mentioned.Name.ToLower().Equals("rorschach2")).Count() > 0;
-
-                bool privateChat = message.TotalParticipants == 2 && message.Participants.FirstOrDefault(p => p.Name.ToLower().Contains("rorschach")) != null;
-
-                if (containsMention || privateChat)
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, new ArgumentNullException("activity"));
+            }
+            try
+            {
+                using (var wrapper = new ActivityWrapper(activity))
                 {
-                    Message returnMessage;
-                    MessageWrapper wrapper = new MessageWrapper(message);
-
-                    if (StaticActions == null)
+                    // Log the message that comes in
                     {
-                        CreateActions();
+                        var properties = new Dictionary<string, string>();
+                        properties.Add("From", activity.From.Name);
+                        properties.Add("Channel", activity.ChannelId);
+                        properties.Add("Mentions", GetMentions(activity));
+
+                        this.LogEvent("MessageReceived", properties);
                     }
-                    string helpMessage;
-                    bool isHelp = false;
 
-                    if (message.Text.Trim().ToLower().Equals("help"))
+                    if (activity.Type == ActivityTypes.Message)
                     {
-                        helpMessage = "Try one of the following commands \n\n";
-                        isHelp = true;
+                        bool containsMention = activity.
+                            GetMentions().
+                            Where(m => m.Mentioned.Name.ToLower().Equals("rorschach2")).Count() > 0;
+
+                        if (containsMention)
+                        {
+                            if (StaticActions == null)
+                            {
+                                CreateActions();
+                            }
+                            string helpMessage;
+                            bool isHelp = false;
+
+                            if (wrapper.IsHelp())
+                            {
+                                helpMessage = "Try one of the following commands \n\n";
+                                isHelp = true;
+                            }
+                            else
+                            {
+                                helpMessage = $"I could not parse '{activity.Text}', try one of the following instead: \n\n";
+                            }
+
+
+                            foreach (var botAction in StaticActions)
+                            {
+                                if (!isHelp)
+                                {
+                                    if (botAction.ParseMessage(wrapper))
+                                    {
+                                        var properties = new Dictionary<string, string>();
+                                        properties.Add("From", activity.From.Name);
+                                        properties.Add("Channel", activity.ChannelId);
+                                        properties.Add("Command", botAction.GetCommandString());
+                                        this.LogEvent("CommandExecuted", properties);
+                                        return Request.CreateResponse(HttpStatusCode.OK);
+                                    }
+                                }
+
+                                helpMessage += botAction.HelpMessage() + "\n\n";
+                            }
+
+                            wrapper.SendReply(helpMessage);
+                            return Request.CreateResponse(HttpStatusCode.OK);
+                        }
                     }
                     else
                     {
-                        helpMessage = $"I could not parse '{message.Text}', try one of the following instead: \n\n";
+                        return await HandleSystemMessage(activity);
                     }
-                    
-
-                    foreach (var botAction in StaticActions)
-                    {
-                        if (!isHelp)
-                        {
-                            returnMessage = botAction.ParseMessage(wrapper);
-                            if (returnMessage != null)
-                            {
-                                var properties = new Dictionary<string, string>();
-                                properties.Add("From", message.From.Name);
-                                properties.Add("Channel", message.ChannelMessageId);
-                                properties.Add("Command", botAction.GetCommandString());
-                                this.LogEvent("CommandExecuted", properties);
-                                return returnMessage;
-                            }
-                        }
-
-                        helpMessage += botAction.HelpMessage() + "\n\n";
-                    }
-                    
-                    return message.CreateReplyMessage(helpMessage);
                 }
-            }
-            else
-            {
-                return HandleSystemMessage(message);
-            }
 
-            return null;
+                return Request.CreateResponse(HttpStatusCode.NoContent);
+            }
+            catch(Exception e)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, e);
+            }
         }
 
-        private Message PerformSlashCommand(Message message)
+        private Task<HttpResponseMessage> HandleSystemMessage(Activity activity)
         {
-            if (message.Text.Length < 1)
+            if (activity.Type == ActivityTypes.Ping)
             {
-                return null;
-
+                return Task.FromResult(Request.CreateResponse(HttpStatusCode.OK));
             }
-
-            var text = message.Text.ToLower().Trim();
-
-            
-            return null;
-        }
-
-        private Message HandleSystemMessage(Message message)
-        {
-            if (message.Type == "Ping")
-            {
-                Message reply = message.CreateReplyMessage();
-                reply.Type = "Ping";
-                return reply;
-            }
-            else if (message.Type == "DeleteUserData")
+            else if (activity.Type == ActivityTypes.DeleteUserData)
             {
                 // Implement user deletion here
                 // If we handle user deletion, return a real message
             }
-            else if (message.Type == "BotAddedToConversation")
+            else if (activity.Type == ActivityTypes.ConversationUpdate)
             {
-                Message reply = message.CreateReplyMessage();
-                reply.Type = "Hello earthlings, mind if I step in?";
-                return reply;
+                return Task.FromResult(Request.CreateResponse(HttpStatusCode.OK));
             }
-            else if (message.Type == "BotRemovedFromConversation")
+            else if (activity.Type == "BotRemovedFromConversation")
             {
             }
-            else if (message.Type == "UserAddedToConversation")
+            else if (activity.Type == "UserAddedToConversation")
             {
             }
-            else if (message.Type == "UserRemovedFromConversation")
+            else if (activity.Type == "UserRemovedFromConversation")
             {
             }
-            else if (message.Type == "EndOfConversation")
+            else if (activity.Type == "EndOfConversation")
             {
             }
 
-            return null;
+            return Task.FromResult(Request.CreateResponse(HttpStatusCode.NoContent));
         }
     }
 }

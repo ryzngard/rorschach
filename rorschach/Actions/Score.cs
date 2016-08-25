@@ -19,7 +19,7 @@ namespace rorschach.Actions
             return "scoreboard, to get the current kudos scoreboard";
         }
 
-        public Message ParseMessage(MessageWrapper m)
+        public bool ParseMessage(ActivityWrapper m)
         {
             if (m.StrippedText.Trim().ToLower().Equals("scoreboard"))
             {
@@ -30,7 +30,8 @@ namespace rorschach.Actions
 
                 if (kudos.Length == 0)
                 {
-                    return m.CreateReply("Nobody has given points yet!");
+                    m.SendReply("Nobody has given points yet!");
+                    return true;
                 }
 
                 // Make sure to display in order
@@ -42,10 +43,11 @@ namespace rorschach.Actions
                 }
 
                 output += "```";
-                return m.CreateReply(output);
+                m.SendReply(output);
+                return true;
             }
 
-            return null;
+            return false;
         }
     }
 }
